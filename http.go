@@ -14,7 +14,7 @@ import (
 // lmdrouter applications to be used outside of AWS Lambda environments, most
 // likely for local development purposes
 func (l *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// convert request into an events.APIGatewayProxyRequest object
+	// convert request into an events.APIGatewayV2HTTPRequest object
 	singleValueHeaders := convertMap(map[string][]string(r.Header))
 	singleValueQuery := convertMap(
 		map[string][]string(r.URL.Query()),
@@ -30,14 +30,16 @@ func (l *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event := events.APIGatewayProxyRequest{
-		Path:                            r.URL.Path,
-		HTTPMethod:                      r.Method,
-		Headers:                         singleValueHeaders,
-		MultiValueHeaders:               map[string][]string(r.Header),
-		QueryStringParameters:           singleValueQuery,
-		MultiValueQueryStringParameters: map[string][]string(r.URL.Query()),
-		Body:                            string(body),
+	event := events.APIGatewayV2HTTPRequest{
+		RawPath: r.URL.Path,
+		RequestContext: events.APIGatewayV2HTTPRequestContext{
+			HTTP: events.APIGatewayV2HTTPRequestContextHTTPDescription{
+				Method: r.Method,
+			},
+		},
+		Headers:               singleValueHeaders,
+		QueryStringParameters: singleValueQuery,
+		Body:                  string(body),
 	}
 
 	res, err := l.Handler(r.Context(), event)

@@ -18,7 +18,7 @@ func Test_UnmarshalRequest(t *testing.T) {
 	t.Run("valid path&query input", func(t *testing.T) {
 		var input mockListRequest
 		err := UnmarshalRequest(
-			events.APIGatewayProxyRequest{
+			events.APIGatewayV2HTTPRequest{
 				PathParameters: map[string]string{
 					"id": "fake-scan-id",
 				},
@@ -33,15 +33,8 @@ func Test_UnmarshalRequest(t *testing.T) {
 					"alias_ptr":  "world",
 					"commaSplit": "one,two,three",
 				},
-				MultiValueQueryStringParameters: map[string][]string{
-					"terms":   []string{"one", "two"},
-					"numbers": []string{"1.2", "3.5", "666.666"},
-				},
 				Headers: map[string]string{
 					"Accept-Language": "en-us",
-				},
-				MultiValueHeaders: map[string][]string{
-					"Accept-Encoding": []string{"gzip", "deflate"},
 				},
 			},
 			false,
@@ -63,15 +56,12 @@ func Test_UnmarshalRequest(t *testing.T) {
 		assert.Equal(t, *input.AliasPtr, aliasExample)
 		assert.DeepEqual(t, []Number{numberOne, numberTwo, numberThree}, input.CommaSplit, "CommaSplit must have 2 items")
 		assert.Equal(t, (*bool)(nil), input.PBoolTwo, "PBoolTwo must be nil")
-		assert.DeepEqual(t, []string{"one", "two"}, input.Terms, "Terms must be parsed from multiple query params")
-		assert.DeepEqual(t, []float64{1.2, 3.5, 666.666}, input.Numbers, "Numbers must be parsed from multiple query params")
-		assert.DeepEqual(t, []string{"gzip", "deflate"}, input.Encoding, "Encoding must be parsed from multiple header params")
 	})
 
 	t.Run("invalid path&query input", func(t *testing.T) {
 		var input mockListRequest
 		err := UnmarshalRequest(
-			events.APIGatewayProxyRequest{
+			events.APIGatewayV2HTTPRequest{
 				PathParameters: map[string]string{
 					"id": "fake-scan-id",
 				},
@@ -94,7 +84,7 @@ func Test_UnmarshalRequest(t *testing.T) {
 	t.Run("valid body input, not base64", func(t *testing.T) {
 		var input mockPostRequest
 		err := UnmarshalRequest(
-			events.APIGatewayProxyRequest{
+			events.APIGatewayV2HTTPRequest{
 				IsBase64Encoded: false,
 				PathParameters: map[string]string{
 					"id": "bla",
@@ -114,7 +104,7 @@ func Test_UnmarshalRequest(t *testing.T) {
 	t.Run("invalid body input, not base64", func(t *testing.T) {
 		var input mockPostRequest
 		err := UnmarshalRequest(
-			events.APIGatewayProxyRequest{
+			events.APIGatewayV2HTTPRequest{
 				IsBase64Encoded: false,
 				Body:            `this is not JSON`,
 			},
@@ -128,7 +118,7 @@ func Test_UnmarshalRequest(t *testing.T) {
 	t.Run("valid body input, base64", func(t *testing.T) {
 		var input mockPostRequest
 		err := UnmarshalRequest(
-			events.APIGatewayProxyRequest{
+			events.APIGatewayV2HTTPRequest{
 				IsBase64Encoded: true,
 				Body:            "eyJuYW1lIjoiRmFrZSBQb3N0IiwiZGF0ZSI6IjIwMjAtMDMtMjNUMTE6MzM6MDBaIn0=",
 			},
@@ -144,7 +134,7 @@ func Test_UnmarshalRequest(t *testing.T) {
 	t.Run("invalid body input, base64", func(t *testing.T) {
 		var input mockPostRequest
 		err := UnmarshalRequest(
-			events.APIGatewayProxyRequest{
+			events.APIGatewayV2HTTPRequest{
 				IsBase64Encoded: true,
 				Body:            "dGhpcyBpcyBub3QgSlNPTg==",
 			},

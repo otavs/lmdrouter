@@ -40,26 +40,25 @@ var boolRegex = regexp.MustCompile(`^1|true|on|enabled$`)
 //
 // Example struct (no body):
 //
-//     type ListPostsInput struct {
-//         ID          uint64   `lambda:"path.id"`
-//         Page        uint64   `lambda:"query.page"`
-//         PageSize    uint64   `lambda:"query.page_size"`
-//         Search      string   `lambda:"query.search"`
-//         ShowDrafts  bool     `lambda:"query.show_hidden"`
-//         Languages   []string `lambda:"header.Accept-Language"`
-//     }
+//	type ListPostsInput struct {
+//	    ID          uint64   `lambda:"path.id"`
+//	    Page        uint64   `lambda:"query.page"`
+//	    PageSize    uint64   `lambda:"query.page_size"`
+//	    Search      string   `lambda:"query.search"`
+//	    ShowDrafts  bool     `lambda:"query.show_hidden"`
+//	    Languages   []string `lambda:"header.Accept-Language"`
+//	}
 //
 // Example struct (JSON body):
 //
-//     type UpdatePostInput struct {
-//         ID          uint64   `lambda:"path.id"`
-//         Author      string   `lambda:"header.Author"`
-//         Title       string   `json:"title"`
-//         Content     string   `json:"content"`
-//     }
-//
+//	type UpdatePostInput struct {
+//	    ID          uint64   `lambda:"path.id"`
+//	    Author      string   `lambda:"header.Author"`
+//	    Title       string   `json:"title"`
+//	    Content     string   `json:"content"`
+//	}
 func UnmarshalRequest(
-	req events.APIGatewayProxyRequest,
+	req events.APIGatewayV2HTTPRequest,
 	body bool,
 	target interface{},
 ) error {
@@ -73,7 +72,7 @@ func UnmarshalRequest(
 	return unmarshalEvent(req, target)
 }
 
-func unmarshalEvent(req events.APIGatewayProxyRequest, target interface{}) error {
+func unmarshalEvent(req events.APIGatewayV2HTTPRequest, target interface{}) error {
 	rv := reflect.ValueOf(target)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return errors.New("invalid unmarshal target, must be pointer to struct")
@@ -96,17 +95,14 @@ func unmarshalEvent(req events.APIGatewayProxyRequest, target interface{}) error
 		}
 
 		var sourceMap map[string]string
-		var multiMap map[string][]string
 
 		switch components[0] {
 		case "query":
 			sourceMap = req.QueryStringParameters
-			multiMap = req.MultiValueQueryStringParameters
 		case "path":
 			sourceMap = req.PathParameters
 		case "header":
 			sourceMap = req.Headers
-			multiMap = req.MultiValueHeaders
 		default:
 			return fmt.Errorf(
 				"invalid param location %q for field %s",
@@ -118,7 +114,6 @@ func unmarshalEvent(req events.APIGatewayProxyRequest, target interface{}) error
 			typeField.Type,
 			valueField,
 			sourceMap,
-			multiMap,
 			components[1],
 		)
 		if err != nil {
@@ -128,7 +123,7 @@ func unmarshalEvent(req events.APIGatewayProxyRequest, target interface{}) error
 	return nil
 }
 
-func unmarshalBody(req events.APIGatewayProxyRequest, target interface{}) (
+func unmarshalBody(req events.APIGatewayV2HTTPRequest, target interface{}) (
 	err error,
 ) {
 	if req.IsBase64Encoded {
@@ -157,7 +152,6 @@ func unmarshalField(
 	typeField reflect.Type,
 	valueField reflect.Value,
 	params map[string]string,
-	multiParam map[string][]string,
 	param string,
 ) error {
 	switch typeField.Kind() {
@@ -205,41 +199,20 @@ func unmarshalField(
 			}
 		}
 	case reflect.Slice:
-		// we'll be extracting values from multiParam, generating a slice and
-		// putting it in valueField
-		strs, ok := multiParam[param]
+		str, ok := params[param]
 		if ok {
-			slice := reflect.MakeSlice(typeField, len(strs), len(strs))
+			stringParts := strings.Split(str, ",")
+			slice := reflect.MakeSlice(typeField, len(stringParts), len(stringParts))
 
-			for i, str := range strs {
-				err := unmarshalField(
-					typeField.Elem(),
-					slice.Index(i),
-					map[string]string{"param": str},
-					nil,
-					"param",
-				)
-				if err != nil {
-					return err
-				}
+			for i, p := range stringParts {
+				inVal := reflect.ValueOf(p)
+				asVal := inVal.Convert(typeField.Elem())
+				slice.Index(i).Set(asVal)
 			}
 
 			valueField.Set(slice)
-		} else {
-			str, ok := params[param]
-			if ok {
-				stringParts := strings.Split(str, ",")
-				slice := reflect.MakeSlice(typeField, len(stringParts), len(stringParts))
-
-				for i, p := range stringParts {
-					inVal := reflect.ValueOf(p)
-					asVal := inVal.Convert(typeField.Elem())
-					slice.Index(i).Set(asVal)
-				}
-
-				valueField.Set(slice)
-			}
 		}
+
 	}
 
 	return nil

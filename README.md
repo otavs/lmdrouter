@@ -105,8 +105,8 @@ type postSomethingInput struct {
     Date    time.Time `json:"date"`
 }
 
-func listSomethings(ctx context.Context, req events.APIGatewayProxyRequest) (
-    res events.APIGatewayProxyResponse,
+func listSomethings(ctx context.Context, req events.APIGatewayV2HTTPRequest) (
+    res events.APIGatewayV2HTTPResponse,
     err error,
 ) {
     // parse input from request and path parameters
@@ -122,8 +122,8 @@ func listSomethings(ctx context.Context, req events.APIGatewayProxyRequest) (
     return lmdrouter.MarshalResponse(http.StatusOK, nil, output)
 }
 
-func postSomethings(ctx context.Context, req events.APIGatewayProxyRequest) (
-    res events.APIGatewayProxyResponse,
+func postSomethings(ctx context.Context, req events.APIGatewayV2HTTPRequest) (
+    res events.APIGatewayV2HTTPResponse,
     err error,
 ) {
     // parse input from request body
@@ -140,8 +140,8 @@ func postSomethings(ctx context.Context, req events.APIGatewayProxyRequest) (
 }
 
 func loggerMiddleware(next lmdrouter.Handler) lmdrouter.Handler {
-    return func(ctx context.Context, req events.APIGatewayProxyRequest) (
-        res events.APIGatewayProxyResponse,
+    return func(ctx context.Context, req events.APIGatewayV2HTTPRequest) (
+        res events.APIGatewayV2HTTPResponse,
         err error,
     ) {
         // [LEVEL] [METHOD PATH] [CODE] EXTRA
